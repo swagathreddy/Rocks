@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Formation Puzzle</title>
+    <style>
+        /* --- General Styling --- */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for smaller screens */
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            padding: 25px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        .intro-text {
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            line-height: 1.7;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        /* --- Game Area Layout --- */
+        .game-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: flex-start;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        /* --- Puzzle Pieces Styling --- */
+        #pieces-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            border: 2px dashed #d1d8e0;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            min-width: 250px;
+        }
+
+        .puzzle-piece {
+            max-width: 170px;
+            height: auto;
+            cursor: grab;
+            transition: all 0.2s ease;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.1));
+            /* Prevents the page from scrolling on touch devices when dragging a piece */
+            touch-action: none;
+        }
+
+        .puzzle-piece:hover {
+            transform: scale(1.05);
+        }
+
+        .puzzle-piece.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        
+        /* --- Drop Zone Styling --- */
+        #rock-assembly-area {
+            flex: 1.5;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #drop-zone {
+            width: 350px;
+            height: 350px;
+            border-radius: 20px;
+            border: 3px dashed #a3b1c6;
+            background-color: #e9ecef;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* The initial outline of the rock */
+            background-image: url('https://storage.googleapis.com/maker-media-tool-prod/media/images/Which_Rockstar_are_you_4.width-400.png');
+            transition: background-color 0.3s, border-style 0.3s;
+            position: relative; /* This is crucial for absolute positioning of children */
+        }
+        
+        /* Position the dropped pieces absolutely within the drop-zone */
+        #drop-zone .puzzle-piece {
+            position: absolute;
+            cursor: default;
+            opacity: 1; /* Ensure pieces are visible when dropped */
+        }
+
+        /* --- PUZZLE PIECE POSITIONS --- */
+        /* --- DO NOT CHANGE THESE VALUES --- */
+        #drop-zone #piece1 {
+            top: 2px; 
+            left: 10px; 
+            width: 170px; 
+        }
+        
+        #drop-zone #piece2 {
+            top: 2px; 
+            left: 180px;
+            width: 160px;
+            height:345px;
+        }
+
+        #drop-zone #piece3 {
+            top: 142px; 
+            left: 10px;
+            width: 170px;
+        }
+        /* --- END OF POSITIONS --- */
+
+        #drop-zone.drag-over {
+            border-style: solid;
+            border-color: #3498db;
+            transform: scale(1.02);
+            background-color: #eaf5ff;
+        }
+
+        #drop-zone.completed {
+            border: 3px solid #27ae60;
+            background-image: none; /* Hide the outline when complete */
+        }
+        
+        /* --- Feedback & Controls --- */
+        #feedback-container {
+            margin-top: 25px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #feedback {
+            font-size: 1.25em;
+            font-weight: bold;
+            padding: 10px 25px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.3s;
+            transform: translateY(10px);
+        }
+
+        #feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #feedback.success {
+            color: #155724;
+            background-color: #d4edda;
+        }
+
+        #reset-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+            display: none; /* Hidden by default */
+        }
+        #reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        /* --- Mobile Responsive Layout --- */
+        @media (max-width: 768px) {
+            #game-container {
+                padding: 15px;
+            }
+            .game-area {
+                flex-direction: column-reverse; /* Puts pieces container below assembly area */
+                align-items: center;
+            }
+            #pieces-container {
+                flex-direction: row; /* Arrange pieces in a row */
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+                margin-top: 30px;
+            }
+            .puzzle-piece {
+                max-width: 140px; /* Smaller pieces for smaller screens */
+            }
+            #drop-zone {
+                width: 300px;
+                height: 300px;
+            }
+            /* Adjust piece positions for smaller drop zone */
+            #drop-zone #piece1 { top: 5px; left: 8px; width: 200px; }
+            #drop-zone #piece2 { top: 5px; left: 148px; width: 200px; height: 290px;}
+            #drop-zone #piece3 { top: 125px; left: 8px; width: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>Rock Formation Challenge</h1>
+        <p class="intro-text">
+            Why do rocks look and feel so different from one another? Some have tiny bits that sparkle like glitter, while others are just one solid colour. Some feel coarse and gritty, while others are smooth to the touch. There are thousands of different rocks on Earth. As you know, scientists have grouped them into three main types: igneous, sedimentary, and metamorphic—based on how each one forms in nature. Here is a quick refresher with Drag & Drop answers that will help complete the rocks.
+        </p>
+        
+        <div class="game-area">
+            <div id="pieces-container">
+                <h2>Puzzle Pieces</h2>
+                <!-- Using your provided images for the puzzle pieces -->
+                <img src="first.png" id="piece1" class="puzzle-piece" draggable="true" alt="Rock Piece 1 - Bottom Left">
+                <img src="second.png" id="piece2" class="puzzle-piece" draggable="true" alt="Rock Piece 2 - Top Left">
+                <img src="third.png" id="piece3" class="puzzle-piece" draggable="true" alt="Rock Piece 3 - Right">
+            </div>
+
+            <div id="rock-assembly-area">
+                <h2>Assemble the Rock</h2>
+                <div id="drop-zone"></div>
+            </div>
+        </div>
+
+        <div id="feedback-container">
+            <div id="feedback"></div>
+        </div>
+        <button id="reset-btn">Play Again</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const piecesContainer = document.getElementById('pieces-container');
+            const pieces = Array.from(document.querySelectorAll('.puzzle-piece'));
+            const dropZone = document.getElementById('drop-zone');
+            const feedbackEl = document.getElementById('feedback');
+            const resetButton = document.getElementById('reset-btn');
+
+            let droppedPiecesCount = 0;
+            const totalPieces = pieces.length;
+            let currentlyDragged = null;
+
+            function shufflePieces() {
+                for (let i = pieces.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    piecesContainer.appendChild(pieces[j]);
+                }
+            }
+            
+            function showFeedback(message, type) {
+                feedbackEl.textContent = message;
+                feedbackEl.className = `feedback ${type} show`;
+                setTimeout(() => {
+                    feedbackEl.classList.remove('show');
+                }, 3000);
+            }
+            
+            function resetGame() {
+                droppedPiecesCount = 0;
+                dropZone.classList.remove('completed');
+                
+                pieces.forEach(piece => {
+                    // Remove the inline styles that might be added during touch drag
+                    piece.style.position = '';
+                    piece.style.top = '';
+                    piece.style.left = '';
+                    piece.style.bottom = '';
+                    piece.style.right = '';
+                    
+                    piecesContainer.appendChild(piece);
+                    piece.classList.remove('dropped');
+                    piece.setAttribute('draggable', 'true');
+                });
+                
+                shufflePieces();
+                resetButton.style.display = 'none';
+                feedbackEl.textContent = '';
+                feedbackEl.className = 'feedback';
+            }
+
+            // This function handles the logic when a piece is dropped correctly
+            function onPieceDrop(droppedPiece) {
+                if (droppedPiece && !droppedPiece.classList.contains('dropped')) {
+                    // Append the piece to the drop zone. The CSS will position it.
+                    dropZone.appendChild(droppedPiece);
+                    droppedPiece.classList.add('dropped');
+                    droppedPiece.setAttribute('draggable', 'false');
+                    
+                    droppedPiecesCount++;
+
+                    // Check if all pieces have been dropped
+                    if (droppedPiecesCount === totalPieces) {
+                        dropZone.classList.add('completed');
+                        showFeedback('Congratulations! You completed the rock!', 'success');
+                        resetButton.style.display = 'block';
+                    }
+                }
+            }
+
+            // --- Desktop Drag & Drop Event Listeners ---
+            pieces.forEach(piece => {
+                piece.addEventListener('dragstart', (e) => {
+                    if (piece.classList.contains('dropped')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    e.dataTransfer.setData('text/plain', piece.id);
+                    setTimeout(() => piece.classList.add('dragging'), 0);
+                });
+
+                piece.addEventListener('dragend', () => {
+                    piece.classList.remove('dragging');
+                });
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!dropZone.classList.contains('completed')) {
+                    dropZone.classList.add('drag-over');
+                }
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const id = e.dataTransfer.getData('text');
+                const droppedPiece = document.getElementById(id);
+                onPieceDrop(droppedPiece);
+            });
+
+            // --- Mobile Touch Event Listeners ---
+            let ghostEl = null;
+
+            pieces.forEach(piece => {
+                piece.addEventListener('touchstart', (e) => {
+                    if (piece.classList.contains('dropped')) return;
+                    
+                    currentlyDragged = piece;
+                    const touch = e.targetTouches[0];
+
+                    // Create a "ghost" element to show what's being dragged
+                    ghostEl = piece.cloneNode(true);
+                    ghostEl.classList.add('dragging');
+                    ghostEl.style.position = 'absolute';
+                    ghostEl.style.zIndex = '1000';
+                    ghostEl.style.pointerEvents = 'none';
+                    document.body.appendChild(ghostEl);
+                    
+                    // Position the ghost under the finger
+                    ghostEl.style.left = (touch.clientX - ghostEl.offsetWidth / 2) + 'px';
+                    ghostEl.style.top = (touch.clientY - ghostEl.offsetHeight / 2) + 'px';
+
+                    piece.style.opacity = '0.4'; // Make original piece transparent
+                }, { passive: false });
+
+                document.body.addEventListener('touchmove', (e) => {
+                    if (!currentlyDragged) return;
+                    e.preventDefault(); // prevent scrolling
+                    
+                    const touch = e.targetTouches[0];
+                    
+                    // Move the ghost element
+                    if (ghostEl) {
+                        ghostEl.style.left = (touch.clientX - ghostEl.offsetWidth / 2) + 'px';
+                        ghostEl.style.top = (touch.clientY - ghostEl.offsetHeight / 2) + 'px';
+                    }
+                    
+                    // Check for drop zone overlap
+                    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (elementUnderTouch === dropZone && !dropZone.classList.contains('completed')) {
+                        dropZone.classList.add('drag-over');
+                    } else {
+                        dropZone.classList.remove('drag-over');
+                    }
+                }, { passive: false });
+
+                document.body.addEventListener('touchend', (e) => {
+                    if (!currentlyDragged) return;
+
+                    // Remove ghost element
+                    if (ghostEl) {
+                        ghostEl.remove();
+                        ghostEl = null;
+                    }
+                    
+                    dropZone.classList.remove('drag-over');
+                    currentlyDragged.style.opacity = '1';
+                    
+                    // Check if the touch ended over the drop zone
+                    const touch = e.changedTouches[0];
+                    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                    if (elementUnderTouch === dropZone) {
+                        onPieceDrop(currentlyDragged);
+                    }
+                    
+                    currentlyDragged = null;
+                });
+            });
+            
+            // Listener for the reset button
+            resetButton.addEventListener('click', resetGame);
+
+            // Initial setup on page load: shuffle the pieces
+            shufflePieces();
+        });
+    </script>
+
+</body>
+</html>
