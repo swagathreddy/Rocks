@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Formation Challenge</title>
+    <style>
+        /* --- General Styling --- */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --rock-size: 250px; /* Base size for rock drop zones */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            padding: 25px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* --- Puzzle Area Layout --- */
+        #puzzles-wrapper {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            margin-bottom: 15px; 
+            flex-wrap: wrap;
+        }
+
+        .puzzle-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .puzzle-container h3 {
+            margin: 0 0 10px 0;
+            color: #34495e;
+        }
+
+        .drop-zone {
+            width: var(--rock-size);
+            height: var(--rock-size);
+            border-radius: 20px;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: all 0.3s ease;
+            position: relative;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+
+        .drop-zone.drag-over {
+            border-style: solid;
+            border-color: #3498db;
+            transform: scale(1.02) translateZ(0);
+            background-color: #eaf5ff;
+        }
+
+        .drop-zone.completed {
+            background-image: none !important; /* Hide outline when complete */
+            border-width: 4px; /* Added: Makes the border thick */
+            border-style: solid; /* Added: Makes the border visible */
+            border-color: #28a745; /* A vibrant success green */
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.7); /* Adds a nice green glow */
+            transform: scale(1.02); /* Optional: A slight pop effect on completion */
+        }
+
+        /* --- Individual Drop Zone Backgrounds --- */
+        #sedimentary-drop-zone { background-image: url('./Main1.png'); }
+        #metamorphic-drop-zone { background-image: url('./Main3.png'); }
+        #igneous-drop-zone   { background-image: url('./Main2.png'); }
+
+        /* --- Puzzle Pieces Styling --- */
+        #pieces-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            border: 2px dashed #d1d8e0;
+            border-radius: 10px;
+        }
+
+        .puzzle-piece {
+            height: auto;
+            cursor: grab;
+            transition: all 0.2s ease;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.1));
+            touch-action: none; /* for mobile */
+            border-radius: 5px;
+        }
+
+        .puzzle-piece.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
+        }
+        
+        .puzzle-piece.dropped {
+            cursor: default;
+            position: absolute;
+            opacity: 1;
+        }
+
+        /* --- PUZZLE PIECE POSITIONS --- */
+        #sedimentary-drop-zone #sedimentary-p1 { top: 0px; left: 2px; width: 130px; }
+        #sedimentary-drop-zone #sedimentary-p2 { top: 5px; left: 130px; width: 120px; height: 250px; }
+        #sedimentary-drop-zone #sedimentary-p3 { top: 125px; left: 2px; width: 130px; height:55% }
+        
+        #metamorphic-drop-zone #metamorphic-p1 { top: 0px; left: 0px; width: 245px; }
+        #metamorphic-drop-zone #metamorphic-p2 { top: 120px; left: 0px; width: 240px; height: 50%; }
+
+        #igneous-drop-zone #igneous-p1 { top: 10px; left: 30px; width: 180px; }
+        #igneous-drop-zone #igneous-p2 { top: 100px; left: 0px; width: 250px; }
+        #igneous-drop-zone #igneous-p3 { top: 160px; left: 0px; width: 250px; }
+
+        /* --- Feedback & Controls --- */
+        
+        #reset-btn { display: none; margin-top: 20px; padding: 12px 30px; font-size: 1.1em; color: white; background: #3498db; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        #reset-btn:hover { background: #2980b9; }
+
+        /* MODIFICATION: Style for mobile instruction text. Initially hidden. */
+        #mobile-instruction {
+            display: none;
+            margin: -5px 0 15px 0;
+            padding: 10px;
+            background-color: #eaf5ff;
+            color: #34495e;
+            border-left: 4px solid #3498db;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+
+        /* --- MOBILE CAROUSEL --- */
+        #mobile-nav { display: none; }
+        
+        @media (max-width: 960px) {
+            :root { --rock-size: 250px; }
+            #puzzles-wrapper { flex-direction: column; align-items: center; }
+        }
+
+        @media (max-width: 768px) {
+            :root { --rock-size: 250px; }
+            #game-container { padding: 15px; }
+
+            #puzzles-wrapper-outer { position: relative; width: 100%; overflow: hidden; }
+            #puzzles-wrapper { flex-direction: row; flex-wrap: nowrap; width: 300%; transition: transform 0.5s ease-in-out; }
+            .puzzle-container { width: 33.3333%; flex-shrink: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
+            
+            #mobile-nav { display: flex; justify-content: space-between; width: 100%; max-width: var(--rock-size); margin: 15px auto 0 auto; }
+            #mobile-nav button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; }
+            #mobile-nav button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+            /* MODIFICATION: Make the instruction visible on mobile screens */
+            #mobile-instruction {
+                display: block;
+            }
+
+            #pieces-container .puzzle-piece { display: none; }
+            #pieces-container .puzzle-piece.visible-mobile { display: inline-block; }
+            
+            .puzzle-piece.selected { outline: 3px solid #3498db; transform: scale(1.1); box-shadow: 0 0 15px rgba(52, 152, 219, 0.7); }
+            #metamorphic-drop-zone { background-size: 90%; right: 1rem; }
+            #igneous-drop-zone { background-size: 90%; right: 2rem; }
+        }
+
+        /* --- MODIFICATION: Added styles for the new information modal --- */
+        #info-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none; /* Initially hidden */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #info-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            position: relative;
+            max-width: 90%;
+            width: 500px;
+            text-align: left;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            margin: 10px;
+        }
+        #info-modal.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 5px;
+            right: 15px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        #modal-image {
+            width: 60%;
+            height: 70%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background-color: #eee;
+        }
+        #modal-title {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        #modal-text {
+            margin: 0;
+            line-height: 1.6;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>Rock Formation Challenge</h1>
+        
+        <div id="puzzles-wrapper-outer">
+            <div id="puzzles-wrapper">
+                <div class="puzzle-container" data-rock-type="sedimentary">
+                    <h3>Sedimentary Rock</h3>
+                    <div id="sedimentary-drop-zone" class="drop-zone" data-rock-type="sedimentary" data-piece-count="3"></div>
+                </div>
+                <div class="puzzle-container" data-rock-type="metamorphic">
+                    <h3>Metamorphic Rock</h3>
+                    <div id="metamorphic-drop-zone" class="drop-zone" data-rock-type="metamorphic" data-piece-count="2"></div>
+                </div>
+                <div class="puzzle-container" data-rock-type="igneous">
+                    <h3>Igneous Rock</h3>
+                    <div id="igneous-drop-zone" class="drop-zone" data-rock-type="igneous" data-piece-count="3"></div>
+                </div>
+            </div>
+             <div id="feedback-container">
+                <div id="feedback"></div>
+            </div>
+        </div>
+        
+
+        <div id="mobile-nav">
+            <button id="prev-puzzle" disabled>&laquo; Previous</button>
+            <button id="next-puzzle">Next &raquo;</button>
+        </div>
+        
+        <h2>Puzzle Pieces</h2>
+        <p id="mobile-instruction">Tap a piece, then tap the above drop zone to place it!</p>
+
+        <div id="pieces-container">
+            <img src="first.png" id="sedimentary-p1" class="puzzle-piece" data-rock-type="sedimentary" draggable="true" alt="Sedimentary Piece 1">
+            <img src="second.png" id="sedimentary-p2" class="puzzle-piece" data-rock-type="sedimentary" draggable="true" alt="Sedimentary Piece 2">
+            <img src="third.png" id="sedimentary-p3" class="puzzle-piece" data-rock-type="sedimentary" draggable="true" alt="Sedimentary Piece 3">
+            
+            <img src="seventh.png" id="metamorphic-p1" class="puzzle-piece" data-rock-type="metamorphic" draggable="true" alt="Metamorphic Piece 1">
+            <img src="eight.png" id="metamorphic-p2" class="puzzle-piece" data-rock-type="metamorphic" draggable="true" alt="Metamorphic Piece 2">
+            
+            <img src="fourth.png" id="igneous-p1" class="puzzle-piece" data-rock-type="igneous" draggable="true" alt="Igneous Piece 1">
+            <img src="fifth.png" id="igneous-p2" class="puzzle-piece" data-rock-type="igneous" draggable="true" alt="Igneous Piece 2">
+            <img src="sixth.png" id="igneous-p3" class="puzzle-piece" data-rock-type="igneous" draggable="true" alt="Igneous Piece 3">
+        </div>
+
+        
+        <button id="reset-btn">Play Again</button>
+    </div>
+
+    <div id="info-modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <img id="modal-image" src="" alt="Rock Information">
+            <h3 id="modal-title"></h3>
+            <p id="modal-text"></p>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const piecesContainer = document.getElementById('pieces-container');
+        const allPieces = Array.from(document.querySelectorAll('.puzzle-piece'));
+        const allDropZones = Array.from(document.querySelectorAll('.drop-zone'));
+        const feedbackEl = document.getElementById('feedback');
+        const resetButton = document.getElementById('reset-btn');
+
+        // MODIFICATION: Get modal elements
+        const infoModal = document.getElementById('info-modal');
+        const modalCloseBtn = document.querySelector('.modal-close');
+        const modalImage = document.getElementById('modal-image');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        
+        
+        // MODIFICATION: Content for the modals is now formatted into points.
+        const rockInfo = {
+            sedimentary: {
+                title: "Sedimentary Rock Facts",
+                image: "./sedres.png",
+                text: `1. It's the most common rock type on the Earth's surface and is found in every country.<br>2. Human activities have created plastistone, a rock formed from plastic debris and rock fragments, found across 5 continents in 11 countries. The 11 countries are USA, Portugal, UK, Italy, Japan, Peru, Brazil, Spain, Bangladesh, China, India. <br>3. Many sedimentary rocks form from the accumulation of shells and skeletal remains of marine life on the ocean floor.`
+            },
+            metamorphic: {
+                title: "Metamorphic Rock Facts",
+                image: "./metares.png",
+                text: `1. Metamorphic rocks are created when existing rocks are transformed by intense heat and pressure.<br>2. Any rock type—sedimentary, igneous, or even other metamorphic rocks—can be changed into a metamorphic rock.`
+            },
+            igneous: {
+                title: "Igneous Rock Facts",
+                image: "igres.png",
+                text: `1. About 75% of the Earth's crust is made of igneous rock.<br>2. Pumice, a gas-filled igneous rock from volcanic eruptions, is so light it can float on water.<br>3. Igneous rocks like basalt commonly form at volcanoes and mid-ocean ridges deep beneath the sea.`
+            }
+        };
+
+        // Mobile Carousel Elements
+        const puzzlesWrapper = document.getElementById('puzzles-wrapper');
+        const prevBtn = document.getElementById('prev-puzzle');
+        const nextBtn = document.getElementById('next-puzzle');
+        let currentPuzzleIndex = 0;
+        
+        let completedPuzzles = 0;
+        const totalPuzzles = allDropZones.length;
+        let isMobile = window.innerWidth <= 768;
+        let selectedPiece = null;
+
+        function initializeGame() {
+            shufflePieces();
+            if (isMobile) {
+                setupMobileInteractions();
+                const initialRockType = document.querySelectorAll('.puzzle-container')[0].dataset.rockType;
+                updateVisiblePieces(initialRockType);
+            } else {
+                setupDesktopInteractions();
+            }
+            resetButton.addEventListener('click', resetGame);
+
+            // MODIFICATION: Add event listeners for closing the modal
+            modalCloseBtn.addEventListener('click', hideInfoModal);
+            infoModal.addEventListener('click', (e) => {
+                if (e.target === infoModal) { // Close if clicking on the overlay
+                    hideInfoModal();
+                }
+            });
+        }
+
+        function shufflePieces() {
+            for (let i = allPieces.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                piecesContainer.appendChild(allPieces[j]);
+            }
+        }
+
+        function setupDesktopInteractions() {
+            allPieces.forEach(piece => {
+                piece.addEventListener('dragstart', e => {
+                    if (piece.classList.contains('dropped')) return;
+                    e.dataTransfer.setData('text/plain', piece.id);
+                    setTimeout(() => piece.classList.add('dragging'), 0);
+                });
+                piece.addEventListener('dragend', () => piece.classList.remove('dragging'));
+            });
+
+            allDropZones.forEach(zone => {
+                zone.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    if (!zone.classList.contains('completed')) zone.classList.add('drag-over');
+                });
+                zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const pieceId = e.dataTransfer.getData('text');
+                    const piece = document.getElementById(pieceId);
+                    
+                    if (piece.dataset.rockType === zone.dataset.rockType) {
+                        placePiece(piece, zone);
+                    } else {
+                        showFeedback('That piece doesn\'t fit here!', 'error');
+                    }
+                });
+            });
+        }
+
+        function setupMobileInteractions() {
+            allPieces.forEach(piece => {
+                piece.addEventListener('click', () => {
+                    if (piece.classList.contains('dropped')) return;
+
+                    if (selectedPiece) {
+                        selectedPiece.classList.remove('selected');
+                    }
+                    if (selectedPiece === piece) {
+                        selectedPiece = null; // Toggle off
+                    } else {
+                        selectedPiece = piece;
+                        selectedPiece.classList.add('selected');
+                    }
+                });
+            });
+
+            allDropZones.forEach(zone => {
+                zone.addEventListener('click', () => {
+                    if (!selectedPiece || zone.classList.contains('completed')) return;
+                    
+                    if (selectedPiece.dataset.rockType === zone.dataset.rockType) {
+                        placePiece(selectedPiece, zone);
+                        selectedPiece.classList.remove('selected');
+                        selectedPiece = null;
+                    } else {
+                        showFeedback('That piece doesn\'t belong to this rock!', 'error');
+                    }
+                });
+            });
+
+            prevBtn.addEventListener('click', () => updateCarousel(-1));
+            nextBtn.addEventListener('click', () => updateCarousel(1));
+        }
+        
+        function updateCarousel(direction) {
+            currentPuzzleIndex += direction;
+            puzzlesWrapper.style.transform = `translateX(-${currentPuzzleIndex * (100 / totalPuzzles)}%)`;
+            
+            prevBtn.disabled = currentPuzzleIndex === 0;
+            nextBtn.disabled = currentPuzzleIndex === totalPuzzles - 1;
+            
+            if (isMobile) {
+                const currentPuzzleContainer = document.querySelectorAll('.puzzle-container')[currentPuzzleIndex];
+                if (currentPuzzleContainer) {
+                    const currentRockType = currentPuzzleContainer.dataset.rockType;
+                    updateVisiblePieces(currentRockType);
+                }
+            }
+        }
+        
+        function updateVisiblePieces(currentRockType) {
+            if (!isMobile) return;
+
+            allPieces.forEach(piece => {
+                if (piece.dataset.rockType === currentRockType) {
+                    piece.classList.add('visible-mobile');
+                } else {
+                    piece.classList.remove('visible-mobile');
+                }
+            });
+        }
+
+        function placePiece(piece, zone) {
+            if (piece.classList.contains('dropped')) return;
+
+            zone.appendChild(piece);
+            piece.classList.add('dropped');
+            piece.setAttribute('draggable', 'false');
+            
+            piece.classList.remove('visible-mobile'); 
+            
+            checkPuzzleCompletion(zone);
+        }
+
+        function checkPuzzleCompletion(zone) {
+            const requiredPieces = parseInt(zone.dataset.pieceCount);
+            const droppedPieces = zone.querySelectorAll('.puzzle-piece').length;
+
+            if (droppedPieces === requiredPieces) {
+                zone.classList.add('completed');
+                completedPuzzles++;
+                const rockType = zone.dataset.rockType;
+                
+                
+                // MODIFICATION: Show the info modal after a short delay
+                setTimeout(() => {
+                    showInfoModal(rockType);
+                }, 500); 
+            }
+        }
+
+        // MODIFICATION: New functions to show and hide the info modal
+        function showInfoModal(rockType) {
+            const info = rockInfo[rockType];
+            if (info) {
+                modalImage.src = info.image;
+                modalTitle.textContent = info.title;
+                modalText.innerHTML = info.text; // MODIFICATION: Changed to innerHTML to render points
+                infoModal.classList.add('show');
+            }
+        }
+
+        function hideInfoModal() {
+            infoModal.classList.remove('show');
+
+            // MODIFICATION: Check if the entire game is complete only AFTER closing the modal
+            if (completedPuzzles === totalPuzzles) {
+                setTimeout(() => { // Short delay for a smoother experience
+                    
+                    resetButton.style.display = 'inline-block';
+                }, 400);
+            }
+        }
+        
+        function showFeedback(message, type) {
+            feedbackEl.textContent = message;
+            feedbackEl.className = `feedback ${type} show`;
+            setTimeout(() => {
+                feedbackEl.classList.remove('show');
+            }, 2500);
+        }
+
+        function resetGame() {
+            completedPuzzles = 0;
+            allPieces.forEach(piece => {
+                piece.classList.remove('dropped', 'selected', 'visible-mobile');
+                piece.setAttribute('draggable', 'true');
+                piecesContainer.appendChild(piece);
+            });
+            allDropZones.forEach(zone => zone.classList.remove('completed'));
+            
+            shufflePieces();
+            resetButton.style.display = 'none';
+            feedbackEl.className = 'feedback';
+            
+            if(isMobile) {
+                currentPuzzleIndex = -1; 
+                updateCarousel(1);
+            }
+        }
+
+        // --- Start the game ---
+        initializeGame();
+    });
+    </script>
+
+</body>
+</html>
